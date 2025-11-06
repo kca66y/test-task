@@ -1,59 +1,263 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# BookingCore — модуль бронирования охотничьих туров
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Мини-модуль для ядра **BookingCore**, реализующий API бронирования охотничьих туров с выбором гида.  
+Разработан на **Laravel 11**, с акцентом на чистую архитектуру, тестируемость и читаемость кода.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Возможности
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- `GET /api/v1/guides` — получить список активных гидов
+    - поддерживает фильтр `?min_experience=3`
+- `POST /api/v1/bookings` — создать новое бронирование тура
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Бизнес-правила
 
-## Learning Laravel
+- Гид должен существовать и быть активным
+- Гид не может быть забронирован на ту же дату дважды
+- Количество участников ≤ 10
+- Дата не может быть в прошлом
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Структура проекта
 
-## Laravel Sponsors
+```text
+app/
+ ├── Contracts/Booking/
+ │    └── BookingException.php              # контракт для всех доменных ошибок
+ ├── DTO/
+ │    ├── GuideFiltersData.php              # DTO для фильтра гидов
+ │    └── HuntingBookingData.php            # DTO для создания бронирования
+ ├── Exceptions/Booking/
+ │    ├── GuideBusyException.php
+ │    ├── GuideNotActiveException.php
+ │    ├── InvalidParticipantsCountException.php
+ │    └── PastDateException.php
+ ├── Http/
+ │    ├── Controllers/Api/
+ │    │    ├── GuideController.php
+ │    │    └── HuntingBookingController.php
+ │    ├── Requests/
+ │    │    ├── Guide/GuideIndexRequest.php
+ │    │    └── Booking/StoreHuntingBookingRequest.php
+ │    └── Resources/
+ │         ├── GuideResource.php
+ │         └── HuntingBookingResource.php
+ ├── Models/
+ │    ├── Guide.php
+ │    └── HuntingBooking.php
+ └── Services/
+      ├── GuideService.php
+      └── HuntingBookingService.php
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Архитектурные принципы
 
-### Premium Partners
+- **Controller** — минимальный слой, обрабатывает только HTTP-вход и формирует ответ  
+- **FormRequest** — отвечает за валидацию данных и сообщения об ошибках  
+- **Service** — содержит бизнес-логику и инварианты домена  
+- **DTO** — строго описывает структуру входных данных, передаваемых в сервисы  
+- **Exception** — определяет доменные ошибки, все реализуют общий интерфейс `BookingException`  
+- **Resource** — форматирует API-ответы в единый вид  
+- **Test** — разделён на feature (поведение API) и unit (бизнес-логика)
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+---
 
-## Contributing
+## Единый формат ошибок
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Все ошибки — валидационные, доменные, 404 и 500 — возвращаются в едином формате JSON:
 
-## Code of Conduct
+```json
+{
+  "status": "fail",
+  "message": "Гид уже занят на указанную дату.",
+  "errors": {
+    "guide_id": ["Гид уже занят на указанную дату."]
+  },
+  "code": 422
+}
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Тестирование
 
-## Security Vulnerabilities
+**Feature-тесты**
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- `tests/Feature/Api/Booking/CreateBookingTest.php` — проверяет создание бронирования, корректность бизнес-правил и сообщений об ошибках
+- `tests/Feature/Api/Guide/GuideIndexTest.php` — проверяет получение списка активных гидов и фильтр `min_experience`
 
-## License
+**Unit-тесты**
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- `tests/Unit/Services/HuntingBookingServiceTest.php` — тестирует бизнес-логику создания брони (валидные и невалидные сценарии)
+- `tests/Unit/Services/GuideServiceTest.php` — тестирует логику фильтрации активных гидов
+
+**Запуск тестов**
+
+```bash
+./vendor/bin/sail artisan test
+```
+
+**Пример ответа**
+```bash
+  PASS Tests\Unit\ExampleTest
+  ✓ that true is true                                                                                                                                                                             0.01s  
+
+   PASS  Tests\Unit\Services\GuideServiceTest
+  ✓ it returns only active guides                                                                                                                                                                 0.65s  
+  ✓ it applies min experience filter                                                                                                                                                              0.01s  
+
+   PASS  Tests\Unit\Services\HuntingBookingServiceTest
+  ✓ it creates booking when guide is active and free                                                                                                                                              0.02s  
+  ✓ it throws guide busy exception when same date is already booked                                                                                                                               0.02s  
+
+   PASS  Tests\Feature\Api\Guide\GuideIndexTest
+  ✓ it returns only active guides                                                                                                                                                                 0.07s  
+  ✓ it filters guides by min experience                                                                                                                                                           0.02s  
+  ✓ it returns empty when no guides match filter                                                                                                                                                  0.01s  
+  ✓ it ignores inactive guides even with experience                                                                                                                                               0.02s  
+
+   PASS  Tests\Feature\Api\HuntingBooking\CreateBookingTest
+  ✓ it creates booking successfully                                                                                                                                                               0.02s  
+  ✓ it returns error when guide is not active                                                                                                                                                     0.06s  
+  ✓ it returns error when guide is busy on date                                                                                                                                                   0.02s  
+  ✓ it returns error for invalid participants count                                                                                                                                               0.02s  
+  ✓ it returns error for past date                                                                                                                                                                0.01s  
+
+   PASS  Tests\Feature\ExampleTest
+  ✓ the application returns a successful response                                                                                                                                                 0.03s  
+
+  Tests:    15 passed (59 assertions)
+  Duration: 1.08s
+```
+
+## Запуск проекта
+
+### Установка зависимостей и окружения (через Laravel Sail)
+
+```bash
+#Клонируем проект
+git clone https://github.com/kca66y/test-task.git
+
+# Устанавливаем зависимости
+composer install
+
+# Копируем конфиг окружения
+cp .env.example .env
+```
+> Важно: Laravel Sail использует Docker.
+Для работы требуется установленный Docker Desktop / Docker Engine / php < 8.1
+
+### Запуск окружения через Sail
+
+```bash
+# Поднять контейнеры (в фоне)
+./vendor/bin/sail up -d
+
+# Сделать ключ приложения
+./vendor/bin/sail artisan key:generate
+
+#Если проект разворачивается впервые — выполни миграции и сидеры
+./vendor/bin/sail artisan migrate --seed
+
+# Проверить состояние
+./vendor/bin/sail ps
+```
+
+### Доступ к приложению
+
+После запуска контейнеров приложение будет доступно по адресу:
+```text
+http://localhost:8000
+```
+Или можно тыкнуть [сюда](http://localhost:8000).
+
+---
+
+## Примеры работы API
+
+### Успешное бронирование
+```bash
+curl -X POST http://localhost:8000/api/v1/bookings   -H "Content-Type: application/json"   -d '{
+    "tour_name": "Большая охота",
+    "hunter_name": "Иван Петров",
+    "guide_id": 1,
+    "date": "2025-12-01",
+    "participants_count": 4
+  }'
+```
+
+**Response**
+```json
+{
+  "status": "success",
+  "data": {
+    "id": 42,
+    "tour_name": "Большая охота",
+    "hunter_name": "Иван Петров",
+    "guide_id": 1,
+    "date": "2025-12-01",
+    "participants_count": 4
+  }
+}
+```
+
+### Ошибка — гид уже занят
+```bash
+curl -X POST http://localhost:8000/api/v1/bookings   -H "Content-Type: application/json"   -d '{
+    "tour_name": "Большая охота",
+    "hunter_name": "Иван Петров",
+    "guide_id": 1,
+    "date": "2025-11-12",
+    "participants_count": 4
+  }'
+```
+
+**Response**
+```json
+{
+  "status": "fail",
+  "message": "Гид уже занят на указанную дату.",
+  "errors": {
+    "guide_id": ["Гид уже занят на указанную дату."]
+  },
+  "code": 422
+}
+```
+
+---
+
+## Интеграция в BookingCore
+
+Модуль полностью соответствует архитектуре ядра BookingCore и может быть интегрирован как отдельный подпакет.
+
+**1. Подключение**
+- Разместить модуль в `modules/HuntingBooking/`
+- Зарегистрировать `BookingModuleServiceProvider` в `config/app.php` или через ядро BookingCore
+
+**2. Роутинг**
+```php
+Route::apiResource('guides', GuideController::class)->only('index');
+Route::apiResource('bookings', HuntingBookingController::class)->only('store');
+```
+
+**3. Расширяемость**
+- Добавление типов туров — через отдельные DTO и сервисы
+- Интеграция с оплатами — через события `BookingCreated`
+- Поддержка админки — Nova / Filament
+- Поддержка многоязычности — Laravel Lang файлы
+
+---
+
+## Общая информация
+
+- Бизнес-логика: `App\Services\HuntingBookingService`
+- DTO: `App\DTO\HuntingBookingData`
+- Доменные ошибки: `App\Exceptions\Booking\*`
+- Feature-тесты: покрывают все сценарии API
+- Unit-тесты: изолируют поведение сервисов
+- Единый JSON-формат ошибок демонстрирует системность подхода
+- OpenAPI-спецификация и README отражают инженерную культуру
+
+---
+Александр Бобров
+
