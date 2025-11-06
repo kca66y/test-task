@@ -259,5 +259,6 @@ Route::apiResource('bookings', HuntingBookingController::class)->only('store');
 - OpenAPI-спецификация и README отражают инженерную культуру
 
 ---
-Александр Бобров
+Автор: *Александр Бобров*
+
 
