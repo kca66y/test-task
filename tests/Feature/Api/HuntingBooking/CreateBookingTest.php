@@ -125,7 +125,7 @@ class CreateBookingTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['date'])
             ->assertJsonFragment([
-                'message' => 'The date field must be a date after or equal to today.',
+                'message' => 'Дата тура должна быть не раньше сегодняшнего дня.',
             ]);
     }
 }

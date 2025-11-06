@@ -26,8 +26,8 @@ class StoreRequest extends FormRequest
     {
         return [
             'date.after_or_equal' => 'Дата тура должна быть не раньше сегодняшнего дня.',
-            'participants_count.max' => 'Количество участников не может превышать 10.',
-            'participants_count.min' => 'Количество участников должно быть не меньше 1.',
+            'participants_count.min' => 'Количество участников должно быть от 1 до 10.',
+            'participants_count.max' => 'Количество участников должно быть от 1 до 10.',
         ];
     }
 }
